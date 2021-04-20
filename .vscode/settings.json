@@ -1,0 +1,11 @@
+{
+    "files.associations": {
+        "istream": "c",
+        "ostream": "c",
+        "type_traits": "c",
+        "hashmap.h": "c",
+        "pthread.h": "c",
+        "mman.h": "c",
+        "unistd.h": "c"
+    }
+}
