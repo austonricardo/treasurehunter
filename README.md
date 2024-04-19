@@ -91,10 +91,12 @@ History
 
 The secp256k1 library is optimized C library for EC operations on curve secp256k1. The Primary bitcoin algorithms for address genereations. The secp256k1_fast_unsafe is a brilhant works that use big windows pre-calculled vales for fast address generations.
 
+This is only the POC not entire project.
+
 Implementation details
 ----------------------
 
-* Find and keep losted address in a big hashtable in memory
+* Find and keep losted address in a big hashtable
   * ....
 * Randon generation a lot of address and compare multiples with big hashtable
   * 
@@ -102,8 +104,11 @@ Implementation details
 To run
 -----------
 
-    $ ./autogen.sh
-    $ ./configure
-    $ make
-    $ ./tests
-    $ sudo make install  # optional
+    $ ./run.sh
+
+To compile
+-----------
+
+    $ 
+
+PS: forgive a little trashs of code :) .
