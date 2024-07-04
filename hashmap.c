@@ -28,7 +28,6 @@ typedef struct _hashmap_map{
 	hashmap_element *data;
 } hashmap_map;
 
-q
 
 /* The implementation here was originally done by Gary S. Brown.  I have
    borrowed the tables directly, and made some minor changes to the
@@ -239,6 +238,13 @@ int hashmap_rehash(map_t in){
 
 	return MAP_OK;
 }
+
+map_t hashmap_new(){
+	//hashmap_map
+	map_t _new = (hashmap_map *)malloc(sizeof(hashmap_map));
+	return _new;
+}
+
 
 /*
  * Add a pointer to the hashmap with some key

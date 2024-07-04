@@ -1,4 +1,4 @@
-cd /home/auston/desenv/secp256k1fu
+cd /home/auston/desenv/treasurehunter
 
 #!/bin/sh
 #Run

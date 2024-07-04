@@ -5,6 +5,7 @@
 //   compile with:
 //   gcc -Wall -Wno-unused-function -O2 --std=c99 -march=native -I src/ -I ./ thp.c -lgmp -o thp
 //   gcc -Wall -Wno-unused-function -O2 --std=c99 -march=native -I src/ -I ./ tho.c -lgmp -o tho
+//   gcc -Wall -Wno-unused-function -O2 --std=c99 -march=native -I src/ -I ./ -I include/ tho.c -lgmp -o tho2
 
 #include <stdio.h>
 #include <stdlib.h>

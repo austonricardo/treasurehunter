@@ -26,10 +26,10 @@ libtool
 .deps/
 .dirstamp
 build-aux/
+tho2
 *.lo
 *.o
 *~
-src/libsecp256k1-config.h
 src/libsecp256k1-config.h.in
 src/ecmult_static_context.h
 m4/libtool.m4
