@@ -14,7 +14,6 @@
 //#include <sys/mman.h>
 //#include <unistd.h>
 
-
 #include "fasthash.c"
 #include "sha2.c"
 #include "ripemd160.c"
@@ -42,6 +41,9 @@ typedef struct thread_procwork_args
     map_t* mymap;
     bp_bigcontext * bpcontext;
     int pool_size;
+    int variant_byte_pos;
+    unsigned char variant_byte_initial;
+    unsigned char variant_byte_final;
 } tpargs;
 
 
@@ -57,6 +59,19 @@ void rand_privkey_part(unsigned char *privkey, int part, int total) {
     // Not cryptographically secure, but good enough for quick verification tests
     int slice = 0xFF/total;
     privkey[0] = slice * part + (rand() & slice);
+}
+
+void rand_privkey_range_with_params_init(unsigned char *privkey, int variant_byte_pos, unsigned char variant_byte_initial, unsigned char variant_byte_final) {
+    // Initialize entire array to zeros
+    memset(privkey, 0, sizeof(privkey));
+
+    // Generate random value for the specified byte
+    privkey[variant_byte_pos] = rand() % (variant_byte_final - variant_byte_initial + 1) + variant_byte_initial;
+
+    //randomiza restantes
+    for ( size_t pos = variant_byte_pos + 1; pos < 32; pos++ ) {
+        privkey[pos] = rand() & 0xFF;
+    }  
 }
 
 void hex_dump(void *data, size_t len) {
@@ -195,11 +210,11 @@ void loadhashtable(map_t *hashtable)
     size_t len = 0;
     size_t read;
 
-    fp = fopen("adrblc.db6", "r");
+    fp = fopen("adrblc-checked-1btc.db6", "r");
     if (fp == NULL)
         exit(EXIT_FAILURE);
 
-    printf("Retrieved content of file adrblc.db6\n");
+    printf("Retrieved content of file adrblc-checked-1btc.db6\n");
     const char sep[2] = ";";
     int adrcount = 0;
     while ((read = getline(&line, &len, fp)) != -1) {
@@ -218,10 +233,14 @@ void loadhashtable(map_t *hashtable)
         //printf("foi token2:%s token1: %s\n",token2,token1);
         hextobin(token1, key, KEY_LENGTH);
 
-        //printf("  key  = "); hex_dump(key, KEY_LENGTH); printf("\n");
+        
 
         memcpy(item->key_string,key,KEY_LENGTH);
         memcpy(item->value,token2,VALUE_MAX_LENGTH);
+
+        if(TEST){
+            printf("  key  = "); hex_dump(key, KEY_LENGTH); printf("\n");
+        }
 
         int status = hashmap_put(hashtable, key, item);
         if(TEST){
@@ -241,7 +260,8 @@ void loadhashtable(map_t *hashtable)
     return;
 }
 
-void * procwork(tpargs *args){
+
+void* procwork(tpargs *args) {    
     unsigned char tid = args->tid;
     printf("Starting process %d\n",tid);
     
@@ -270,8 +290,9 @@ void * procwork(tpargs *args){
         batch++;
         total_keys+=batch_size;
         for ( size_t i = 0; i < batch_size; i++ ) {
-            rand_privkey(&privkey[32 * i]);
-            rand_privkey_part(&privkey[32 * i],args->tid,args->pool_size);
+            //rand_privkey(&privkey[32 * i]);
+            //rand_privkey_part(&privkey[32 * i],args->tid,args->pool_size);
+            rand_privkey_range_with_params_init(&privkey[32 * i],args->variant_byte_pos,args->variant_byte_initial,args->variant_byte_final);
         }
         
         if(TEST){
@@ -291,6 +312,9 @@ void * procwork(tpargs *args){
             //memcpy(find_key,pbcomp,KEY_LENGTH);
             //printf("  find key = "); hex_dump(find_key, KEY_LENGTH); printf("\n");
             status = hashmap_get(args->mymap, pbcomp, (void**)(&value));
+            
+            //Imprime chave privada gerada para testes
+            //printf("tid %d privkey: ", tid); hex_dump(pk, 32); printf("; publkey:"); hex_dump(pbcomp, 20);printf("\n");
             
             /* Make sure the value was both found and the correct number */
             if(status==MAP_OK){
@@ -323,11 +347,97 @@ void * procwork(tpargs *args){
     free(privkey); free(publkey); 
 }
 
+void hex_str_to_byte_array(const char *hex_str, unsigned char *byte_array, size_t byte_array_size) {
+    size_t hex_str_len = strlen(hex_str);
+    size_t byte_array_len = (hex_str_len + 1) / 2;
+
+    memset(byte_array, 0, byte_array_size);
+
+    for (size_t i = 0; i < hex_str_len; i++) {
+        char hex_digit = hex_str[hex_str_len - 1 - i];
+        int value = 0;
+        if (hex_digit >= '0' && hex_digit <= '9') {
+            value = hex_digit - '0';
+        } else if (hex_digit >= 'a' && hex_digit <= 'f') {
+            value = hex_digit - 'a' + 10;
+        } else if (hex_digit >= 'A' && hex_digit <= 'F') {
+            value = hex_digit - 'A' + 10;
+        }
+
+        byte_array[byte_array_len - 1 - (i / 2)] |= value << ((i % 2) * 4);
+    }
+}
+
+void calculate_variant_byte(const char *lower_str, const char *upper_str, int *variant_pos, unsigned char *min_val, unsigned char *max_val) {
+    size_t byte_array_size = 32;
+    unsigned char lower_bytes[32] = {0};
+    unsigned char upper_bytes[32] = {0};
+
+    hex_str_to_byte_array(lower_str, lower_bytes, byte_array_size);
+    hex_str_to_byte_array(upper_str, upper_bytes, byte_array_size);
+
+    for (size_t i = 0; i < byte_array_size; i++) {
+        if (lower_bytes[i] != upper_bytes[i]) {
+            *variant_pos = i;
+            *min_val = lower_bytes[i];
+            *max_val = upper_bytes[i];
+            return;
+        }
+    }
+
+    *variant_pos = -1;
+    *min_val = 0;
+    *max_val = 0;
+}
+
+void pad_with_zeros(char *dest, const char *src, size_t total_length) {
+    size_t src_len = strlen(src);
+    if (src_len > total_length) {
+        fprintf(stderr, "Erro: A string de entrada é maior que o tamanho permitido.\n");
+        exit(1);
+    }
+
+    // Preencher com zeros à esquerda
+    memset(dest, '0', total_length - src_len);
+    // Copiar a string original para o final do buffer de destino
+    strcpy(dest + (total_length - src_len), src);
+}
+
+
 int main(int argc, char **argv) {
     unsigned int bmul_size  = ( argc > 1 ? atoi(argv[1]) : 20 );    // ecmult_big window size in bits
     unsigned int batch_size = ( argc > 2 ? atoi(argv[2]) : 16 );    // ecmult_batch size in keys
     unsigned int pool_size  = ( argc > 3 ? atoi(argv[3]) : 2 );    // number of parallel threads
-    
+
+    const char *lower_str = ( argc > 4 ? argv[4] : "0000000000000000000000000000000000000000000000020000000000000000" );
+    const char *upper_str = ( argc > 5 ? argv[5] : "000000000000000000000000000000000000000000000003ffffffffffffffff" );
+
+    if (strlen(lower_str) > 64 || strlen(upper_str) > 64) {
+        fprintf(stderr, "Erro: As strings de limite devem ter no máximo 64 caracteres.\n");
+        return 1;
+    }
+
+    // Arrays para armazenar as strings de 64 caracteres
+    char lower_str_padded[65] = {0}; // 64 caracteres + 1 para o terminador nulo
+    char upper_str_padded[65] = {0};
+
+    // Preencher as strings com zeros à esquerda
+    pad_with_zeros(lower_str_padded, lower_str, 64);
+    pad_with_zeros(upper_str_padded, upper_str, 64);
+
+    int variant_pos;
+    unsigned char variant_min_val, variant_max_val;
+
+    calculate_variant_byte(lower_str_padded, upper_str_padded, &variant_pos, &variant_min_val, &variant_max_val);
+
+    if (variant_pos != -1) {
+        printf("Posicao variante: %d\n", variant_pos);
+        printf("Valor minimo: 0x%02x\n", variant_min_val);
+        printf("Valor maximo: 0x%02x\n", variant_max_val);
+    } else {
+        printf("As strings de limite são idênticas.\n");
+    }
+
     printf("bmul  size = %u\n", bmul_size);
     printf("batch size = %u\n", batch_size);
     printf("pool size = %u\n", pool_size);
@@ -339,8 +449,8 @@ int main(int argc, char **argv) {
     secp256k1_batch_create_context(bmul_size, batch_size, bpcontext);
 
     map_t mymap;
-    
     mymap = hashmap_new();
+    
     loadhashtable(mymap);
     /* Store the key string along side the numerical value so we can free it later */
 
@@ -352,6 +462,9 @@ int main(int argc, char **argv) {
     args->log = log;
     args->mymap = mymap;
     args->pool_size =pool_size;
+    args->variant_byte_pos = variant_pos;
+    args->variant_byte_initial = variant_min_val;
+    args->variant_byte_final = variant_max_val;
 
     // Let us create three threads 
     pid_t pid[pool_size];

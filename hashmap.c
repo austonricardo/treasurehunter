@@ -240,10 +240,24 @@ int hashmap_rehash(map_t in){
 }
 
 map_t hashmap_new(){
-	//hashmap_map
-	map_t _new = (hashmap_map *)malloc(sizeof(hashmap_map));
-	return _new;
+    // Allocate memory for hashmap_map and check if the allocation is successful
+    hashmap_map *m = (hashmap_map *)malloc(sizeof(hashmap_map));
+    if (!m) return NULL;
+
+    // Initialize the table size and current size
+    m->table_size = INITIAL_SIZE;
+    m->size = 0;
+
+    // Allocate memory for the data array and check if the allocation is successful
+    m->data = (hashmap_element *)calloc(m->table_size, sizeof(hashmap_element));
+    if (!m->data) {
+        free(m);
+        return NULL;
+    }
+
+    return m;
 }
+
 
 
 /*
