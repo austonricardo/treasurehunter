@@ -18,7 +18,7 @@ Neste modelo, pretende-se utilizar o processamento ocioso de smartphones para cr
 
 ### Desenvolvendo Ideias
 
-O principal algoritmo criptográfico utilizado no Bitcoin e em outras criptomoedas é o de curva elíptica, conhecido como ECDSA (Elliptic Curve Digital Signature Algorithm). No ECDSA, as chaves privadas correspondem a um número inteiro representado por 256 bits. Em termos estatísticos, isso implica em uma quantidade enorme de combinações possíveis.
+O principal algoritmo criptográfico utilizado no Bitcoin e em outras criptomoedas é o de curva elíptica, conhecido como ECDSA (Elliptic Curve Digital Signature Algorithm). No ECDSA, as chaves privadas correspondem a um número inteiro representado por 256 bits. Em termos simples, isso implica em uma quantidade enorme de combinações possíveis. Tornando a tarefa de descobrir uma chave para determinada carteira praticamente impossível.
 
 ## Observações e Explicações
 
